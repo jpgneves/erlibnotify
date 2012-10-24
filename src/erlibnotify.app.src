@@ -1,0 +1,11 @@
+{application, erlibnotify,
+ [
+  {description, "Erlang bindings to libnotify"},
+  {vsn, "git"},
+  {registered, []},
+  {applications, [
+                  kernel,
+                  stdlib
+                 ]},
+  {env, []}
+ ]}.
