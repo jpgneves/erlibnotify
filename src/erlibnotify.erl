@@ -18,7 +18,7 @@
 -on_load(init_nif/0).
 
 init_nif() ->
-  ok = erlang:load_nif(code:priv_dir(?MODULE) ++ "/erlibnotify_nif", 0).
+  ok = erlang:load_nif(filename:absname(code:priv_dir(?MODULE) ++ "/erlibnotify_nif"), 0).
 
 init(_AppName) ->
   exit(nif_library_not_loaded).
