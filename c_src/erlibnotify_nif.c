@@ -99,15 +99,43 @@ static ERL_NIF_TERM notification_new_nif(ErlNifEnv* env, int argc, const ERL_NIF
   return ret;
 }
 
+static ERL_NIF_TERM notification_update_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+  ErlNotification* e_notification = NULL;
+  char* summary = (char*)calloc(MAX_SUMMARY_LEN, sizeof(char));
+  char* body = (char*)calloc(MAX_BODY_LEN, sizeof(char));
+  char* icon = (char*)calloc(MAX_ICON_LEN, sizeof(char));
+
+  if(!enif_get_resource(env, argv[0], ErlNotificationType, (void**)&e_notification) ||
+     !enif_get_string(env, argv[1], summary, MAX_SUMMARY_LEN, ERL_NIF_LATIN1) ||
+     !enif_get_string(env, argv[2], body, MAX_BODY_LEN, ERL_NIF_LATIN1) ||
+     !enif_get_string(env, argv[3], icon, MAX_ICON_LEN, ERL_NIF_LATIN1)) {
+    return enif_make_badarg(env);
+  }
+
+  return gboolean_to_atom(env, notify_notification_update(e_notification->notification,
+							  summary,
+							  body,
+							  icon));
+}
+
 static ERL_NIF_TERM notification_show_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
   ErlNotification* e_notification = NULL;
-  GError** error = NULL;
+  GError* error = NULL;
+
+  ERL_NIF_TERM ret;
+
   if(!enif_get_resource(env, argv[0], ErlNotificationType, (void**)&e_notification)) {
     return enif_make_badarg(env);
   }
 
-  notify_notification_show(e_notification->notification, error);
-  return enif_make_atom(env, ATOM_OK);
+  if(!notify_notification_show(e_notification->notification, &error)) {
+    ret = enif_make_tuple2(env, enif_make_atom(env, "error"),
+			   enif_make_string(env, error->message, ERL_NIF_LATIN1));
+  } else {
+    ret = gboolean_to_atom(env, TRUE);
+  }
+
+  return ret;
 }
 
 static ERL_NIF_TERM notification_set_timeout_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
@@ -124,13 +152,29 @@ static ERL_NIF_TERM notification_set_timeout_nif(ErlNifEnv* env, int argc, const
   return enif_make_atom(env, ATOM_OK);
 }
 
+static ERL_NIF_TERM notification_set_urgency_nif(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[]) {
+  ErlNotification* e_notification = NULL;
+  int urgency;
+
+  if(!enif_get_resource(env, argv[0], ErlNotificationType, (void**)&e_notification) ||
+     !enif_get_int(env, argv[1], &urgency)) {
+    return enif_make_badarg(env);
+  }
+
+  notify_notification_set_urgency(e_notification->notification, urgency);
+
+  return enif_make_atom(env, ATOM_OK);
+}
+
 static ErlNifFunc nif_funcs[] = {
   {"init", 1, init_nif},
   {"uninit", 0, uninit_nif},
   {"is_initted", 0, is_initted_nif},
   {"notification_new", 3, notification_new_nif},
+  {"notification_update", 4, notification_update_nif},
   {"notification_show", 1, notification_show_nif},
-  {"notification_set_timeout", 2, notification_set_timeout_nif}
+  {"notification_set_timeout", 2, notification_set_timeout_nif},
+  {"notification_set_urgency", 2, notification_set_urgency_nif}
 };
 
 ERL_NIF_INIT(erlibnotify, nif_funcs, load, NULL, NULL, NULL);
